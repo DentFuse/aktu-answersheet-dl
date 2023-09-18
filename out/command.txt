@@ -1,0 +1,1 @@
+magick.exe convert "Screenshot (1).png" 0.Png 1.Png 2.Png 3.Png 4.Png 5.Png 6.Png 7.Png 8.Png 9.Png 10.Png 11.Png 12.Png 13.Png 14.Png 15.Png 16.Png 17.Png 18.Png 19.Png 20.Png 21.Png 22.Png 23.Png 24.Png 25.Png 26.Png 27.Png 28.Png 29.Png 30.Png 31.Png 32.Png 33.Png 34.Png 35.Png out.pdf
