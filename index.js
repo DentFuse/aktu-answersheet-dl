@@ -1,12 +1,13 @@
 import puppeteer from "puppeteer";
 import fs from "fs/promises";
 import { existsSync } from "fs";
+import got from "got";
 
 const launchOpts = {
   headless: false,
 };
 
-let urlCap = [];
+let downloadQueue = [];
 let dlActive = false;
 let currentSub = "";
 let count = 0;
@@ -57,6 +58,7 @@ async function main() {
         const ip = (await td.$$("input"))[1];
         await page.waitForNetworkIdle();
         dlActive = true;
+        downloadQueue = [];
         count = 0;
         await ip.click();
         await page.waitForNetworkIdle();
@@ -66,7 +68,7 @@ async function main() {
           await sleep(1000);
           count++;
           await frame.click("#ctl00_Ajaxmastercontentplaceholder_Next");
-          await sleep(2000);
+          await sleep(1000);
           await page.waitForNetworkIdle();
         }
         await sleep(5000);
@@ -81,23 +83,41 @@ async function main() {
   }
 }
 
+function initiateDownload(url) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const dir = "./out/" + currentSub;
+      if (!existsSync(dir)) await fs.mkdir(dir);
+      console.log(url);
+      const outputName = dir + "/" + count.toString() + "." + url.split(".").pop();
+      if (existsSync(outputName)) {
+        console.log("exists");
+        return resolve();
+      }
+      const img = (await got(url, { responseType: "buffer" })).body;
+      await fs.writeFile(outputName, img, "binary");
+      resolve();
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
 function checkImages(page) {
   return new Promise(async (resolve, reject) => {
     try {
       await page.setRequestInterception(true);
-      page.on("request", (request) => request.continue());
-      page.on("requestfinished", async (request) => {
+      // page.on("request", (request) => request.continue());
+      page.on("request", async (request) => {
+        // requestfinished
         if (request.resourceType() === "image") {
+          request.abort();
           if (!dlActive) return;
-          console.log(request.url());
-          const dir = "./out/" + currentSub;
-          if (!existsSync(dir)) await fs.mkdir(dir);
-          const img = await request.response().buffer();
-          await fs.writeFile(
-            dir + "/" + count.toString() + "." + request.url().split(".").pop(),
-            img,
-            "binary"
-          );
+          const url = request.url();
+          if (!url.endsWith(".Png")) return;
+          await initiateDownload(url);
+        } else {
+          request.continue();
         }
       });
       const session = await page.target().createCDPSession();
